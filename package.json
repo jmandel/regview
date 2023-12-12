@@ -1,0 +1,22 @@
+{
+  "name": "day-2-answer-suggestion",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/fhir": "^0.0.40",
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@azure/openai": "^1.0.0-beta.7",
+    "@microsoft/tiktokenizer": "^1.0.3",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "fhir-extension-helpers": "^0.3.0",
+    "fhir-sdc-helpers": "^0.1.0",
+    "jsdom": "^23.0.1",
+    "openai": "^4.20.1"
+  }
+}
