@@ -11,261 +11,308 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel" data-presets="react" data-type="module">
-
-      import React, { useRef, useState, useEffect, useCallback, createContext, useContext } from "https://cdn.skypack.dev/react";
+      import React, {
+        useRef,
+        useState,
+        useEffect,
+        useCallback,
+        createContext,
+        useContext,
+      } from "https://cdn.skypack.dev/react";
       import ReactDOM from "https://cdn.skypack.dev/react-dom";
 
       const fetchData = async () => {
-  const response = await fetch('summary.json');
-  return response.json();
-};
+        const response = await fetch("summary.json");
+        return response.json();
+      };
 
-const renderMarkdown = (markdown) => {
-  return { __html:marked.parse(markdown) };
-};
+      const renderMarkdown = (markdown) => {
+        return { __html: marked.parse(markdown) };
+      };
 
-const Summary = ({ node, depth = 1 }) => {
+      const Summary = ({ node, depth = 1 }) => {
+        const {
+          showOverallSummary,
+          setShowOverallSummary,
+          showChangesFromProposed,
+          setShowChangesFromProposed,
+          selectedAudiences,
+          setSelectedAudiences,
+        } = useConfiguration();
 
-   const {
-    showOverallSummary,
-    setShowOverallSummary,
-    showChangesFromProposed,
-    setShowChangesFromProposed,
-    selectedAudiences,
-    setSelectedAudiences
-  } = useConfiguration();
+        const Heading = header(depth);
+        return (
+          <>
+            <Heading id={`summary-${node.path.join(",")}`}>
+              {node.title}
+              <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
+            </Heading>
+            {showOverallSummary && node.summary && (
+              <div
+                className={"summary"}
+                dangerouslySetInnerHTML={renderMarkdown(node.summary.summary)}
+              />
+            )}
 
-  const Heading  = header(depth)
-  return (
-    <div>
-      <Heading id={`summary-${node.path.join(",")}`}>
-        {node.title}
-        <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
-      </Heading>
-      {showOverallSummary && node.summary && (
-        <div
-          className={"summary"}
-          dangerouslySetInnerHTML={renderMarkdown(node.summary.summary)}
-        />
-      )}
+            {showChangesFromProposed && node.summary?.changesFromProposal && (
+              <div
+                className={"changes-from-proposal"}
+                dangerouslySetInnerHTML={renderMarkdown(
+                  node.summary.changesFromProposal
+                )}
+              />
+            )}
 
-      {showChangesFromProposed &&  node.summary?.changesFromProposal && 
-       <div
-          className={"changes-from-proposal"}
-          dangerouslySetInnerHTML={renderMarkdown(node.summary.changesFromProposal)}
-        />
-      } 
-      
+            {selectedAudiences?.length && node.summary?.keyPointsByAudience && (
+              <div className={"key-points"}>
+                Key Points:
+                <ul>
+                  {node.summary.keyPointsByAudience
+                    .filter(({ audience }) =>
+                      selectedAudiences.includes(audience)
+                    )
+                    .map((aud) => (
+                      <li>
+                        <strong>{aud.audience}</strong> {aud.point}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
 
-      {
-        selectedAudiences?.length && node.summary?.keyPointsByAudience &&
-        (<div 
-        className={"key-points"}
-        >Key Points:
-            <ul>
-                {
-                    node.summary.keyPointsByAudience.filter(({audience}) => selectedAudiences.includes(audience)).map((aud) =>
-                    <li><strong>{aud.audience}</strong> {aud.point}</li>)
-                }
-            </ul></div>)
-      } 
+            {/* Render other parts of the summary as needed */}
+            {node.children.map((child) => (
+              <Summary
+                key={child.path.join(",")}
+                node={child}
+                depth={depth + 1}
+              />
+            ))}
+          </>
+        );
+      };
+      const header = (depth) => {
+        switch (depth) {
+          case 1:
+            return "h1";
+          case 2:
+            return "h2";
+          case 3:
+            return "h3";
+          case 4:
+            return "h4";
+          case 5:
+            return "h5";
+          default:
+            return "h6";
+        }
+      };
 
-      {/* Render other parts of the summary as needed */}
-      {node.children.map(child => (
-        <Summary key={child.path.join(",")} node={child} depth={depth + 1} />
-      ))}
-    </div>
-  );
-};
-const header = (depth) => {
-  switch (depth) {
-    case 1:
-      return 'h1'
-    case 2:
-      return 'h2'
-    case 3:
-      return 'h3'
-    case 4:
-      return 'h4'
-    case 5:
-      return 'h5'
-    default:
-      return 'h6'
-  }
-};
+      const FullText = ({ node, depth = 1 }) => {
+        const Heading = header(depth);
 
-const FullText = ({ node, depth = 1 }) => {
-  const Heading  = header(depth)
+        return (
+          <>
+            <Heading id={`full-text-${node.path.join(",")}`}>
+              <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
+              {node.title}
+            </Heading>
+            <div dangerouslySetInnerHTML={renderMarkdown(node.text)} />
+            {node.children.map((child) => (
+              <FullText
+                key={child.path.join(",")}
+                node={child}
+                depth={depth + 1}
+              />
+            ))}
+          </>
+        );
+      };
 
-  return (
-    <div>
-      <Heading id={`full-text-${node.path.join(",")}`}>
-        <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
-        {node.title}
-      </Heading>
-      <div dangerouslySetInnerHTML={renderMarkdown(node.text)} />
-      {node.children.map(child => (
-        <FullText key={child.path.join(",")} node={child} depth={depth + 1} />
-      ))}
-    </div>
-  );
-};
+      const ConfigurationBar = ({ audiences, onChange }) => {
+        const [showOverallSummary, setShowOverallSummary] = useState(true);
+        const [showChangesFromProposed, setShowChangesFromProposed] =
+          useState(true);
+        const [selectedAudiences, setSelectedAudiences] = useState(audiences);
 
-const ConfigurationBar = ({audiences, onChange}) => {
-    const [showOverallSummary, setShowOverallSummary] = useState(true);
-    const [showChangesFromProposed, setShowChangesFromProposed] = useState(true);
-    const [selectedAudiences, setSelectedAudiences] = useState(audiences);
-
-    useEffect(() => {
-        onChange({
+        useEffect(() => {
+          onChange({
             showOverallSummary,
             showChangesFromProposed,
-            selectedAudiences
-        })
-    }, [showOverallSummary, showChangesFromProposed, selectedAudiences])
+            selectedAudiences,
+          });
+        }, [showOverallSummary, showChangesFromProposed, selectedAudiences]);
 
-  const handleAudienceChange = (event) => {
-    const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
-    setSelectedAudiences(selectedOptions);
-  };
+        const handleAudienceChange = (event) => {
+          const selectedOptions = Array.from(
+            event.target.selectedOptions,
+            (option) => option.value
+          );
+          setSelectedAudiences(selectedOptions);
+        };
 
-  return (
-    <div className="config-bar">
-      <label>
-        <input
-          type="checkbox"
-          checked={showOverallSummary}
-          onChange={(e) => setShowOverallSummary(e.target.checked)}
-        />
-        Show Overall Summary
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={showChangesFromProposed}
-          onChange={(e) => setShowChangesFromProposed(e.target.checked)}
-        />
-        Show Changes from Proposed Rule
-      </label>
-      <div className="audience-selector">
-        <label htmlFor="audience-select">Audience(s)</label>
-        <select multiple id="audience-select" value={selectedAudiences} onChange={handleAudienceChange}>
-          {audiences.map(audience => (
-            <option key={audience} value={audience}>{audience}</option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-};
+        return (
+          <div className="config-bar">
+            <label>
+              <input
+                type="checkbox"
+                checked={showOverallSummary}
+                onChange={(e) => setShowOverallSummary(e.target.checked)}
+              />
+              Show Overall Summary
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showChangesFromProposed}
+                onChange={(e) => setShowChangesFromProposed(e.target.checked)}
+              />
+              Show Changes from Proposed Rule
+            </label>
+            <div className="audience-selector">
+              <label htmlFor="audience-select">Audience(s)</label>
+              <select
+                multiple
+                id="audience-select"
+                value={selectedAudiences}
+                onChange={handleAudienceChange}
+              >
+                {audiences.map((audience) => (
+                  <option key={audience} value={audience}>
+                    {audience}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        );
+      };
 
-const ConfigurationContext = createContext();
-export const useConfiguration = () => useContext(ConfigurationContext);
+      const ConfigurationContext = createContext();
+      export const useConfiguration = () => useContext(ConfigurationContext);
 
       const App = () => {
-
-
-        let [configValueForContext, setConfigValueForContext] = useState({})
+        let [configValueForContext, setConfigValueForContext] = useState({});
         const [data, setData] = useState(null);
         let fullTextPanel = null;
         let summaryPanel = null;
 
-        useEffect(() => {
-          fetchData().then(data => setData(data.children[3]));
+        useEffect(async () => {
+          const data = await fetchData();
+          setData(data.children[3]);
+          if (window.location.hash) {
+            const element = document.getElementById(
+              window.location.hash.substr(1)
+            );
+            if (element) {
+              element.scrollIntoView();
+            }
+          }
         }, []);
 
         let controller = null;
         const handleScroll = (e) => {
-            const self = e.target === fullTextPanel ? fullTextPanel : summaryPanel;
-            const other = e.target === fullTextPanel ? summaryPanel : fullTextPanel;
-             if (controller && controller !== self) {
-                return
-            }
-            controller = self;
-            if (!self) return;
-       
-          const headings = Array.from(self.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+          const self =
+            e.target === fullTextPanel ? fullTextPanel : summaryPanel;
+          const other =
+            e.target === fullTextPanel ? summaryPanel : fullTextPanel;
+          if (controller && controller !== self) {
+            return;
+          }
+          controller = self;
+          if (!self) return;
+
+          const headings = Array.from(
+            self.querySelectorAll("h1, h2, h3, h4, h5, h6")
+          );
           const topmostVisibleHeading = headings.find(isElementInViewport);
 
           if (topmostVisibleHeading?.id) {
-            const id =  (e.target === fullTextPanel ? "summary" : "full-text") +  "-" + topmostVisibleHeading.id.split("-").at(-1)
-            console.log(topmostVisibleHeading.id, "-> target id -> ", id)
+            const id =
+              (e.target === fullTextPanel ? "summary" : "full-text") +
+              "-" +
+              topmostVisibleHeading.id.split("-").at(-1);
             const dependantElt = document.getElementById(id);
             if (dependantElt) {
-              dependantElt.scrollIntoView();
-              other.scrollTop -= topmostVisibleHeading.getBoundingClientRect().y;
+            //   const selfScollPosition = topmostVisibleHeading.getBoundingClientRect().top - self.getBoundingClientRect().top;
+            //   other.scrollTop = dependantElt.offsetTop - selfScollPosition+ (e.target === fullTextPanel ? -100 : -100);
+                const selfScrollOnScreen = topmostVisibleHeading.getBoundingClientRect().top - self.getBoundingClientRect().top; 
+                console.log("Self on scree", selfScrollOnScreen)
+                other.scrollTop = dependantElt.offsetTop - selfScrollOnScreen
             }
+
           }
           setTimeout(() => {
             controller = null;
           }, 100);
         };
 
-        const handleFulltextPanel =  useCallback((pane) => {
-            console.log("right Scroll effect", pane)
+        const handleFulltextPanel = useCallback((pane) => {
+          console.log("right Scroll effect", pane);
           fullTextPanel = pane;
           if (!pane) {
             return;
           }
-          pane.addEventListener('scroll', handleScroll);
+          pane.addEventListener("scroll", handleScroll);
           return () => {
-            pane.removeEventListener('scroll', handleScroll);
+            pane.removeEventListener("scroll", handleScroll);
           };
         });
 
-        const handleSummaryPanel =  useCallback((pane) => {
-            console.log("left Scroll effect", pane)
+        const handleSummaryPanel = useCallback((pane) => {
+          console.log("left Scroll effect", pane);
           summaryPanel = pane;
           if (!pane) {
             return;
           }
-          pane.addEventListener('scroll', handleScroll);
+          pane.addEventListener("scroll", handleScroll);
           return () => {
-            pane.removeEventListener('scroll', handleScroll);
+            pane.removeEventListener("scroll", handleScroll);
           };
         });
 
- 
         if (!data) {
           return <div>Loading...</div>;
         }
 
-         let audiences =  new Set()
-         const recurse = (node) => {
+        let audiences = new Set();
+        const recurse = (node) => {
           if (node.summary?.keyPointsByAudience) {
-            node.summary.keyPointsByAudience.map(aud => aud.audience).forEach(aud => audiences.add(aud))
+            node.summary.keyPointsByAudience
+              .map((aud) => aud.audience)
+              .forEach((aud) => audiences.add(aud));
           }
-          node.children.forEach(child => recurse(child));
-         }
-         recurse(data);
-
+          node.children.forEach((child) => recurse(child));
+        };
+        recurse(data);
 
         return (
           <>
-          <ConfigurationBar
-            audiences={Array.from(audiences)}
-            onChange={(config) => {
-              setConfigValueForContext(config)
-              console.log("config", config)
-            }}
-          />
-        <ConfigurationContext.Provider value={configValueForContext}>
-            <div className={"panes"}>
-                <div id="summary-pane" 
-                    className={"pane"}
-                    ref={handleSummaryPanel} style={{flexBasis: 1}}>
-                <Summary node={data} />
+            <ConfigurationBar
+              audiences={Array.from(audiences)}
+              onChange={(config) => {
+                setConfigValueForContext(config);
+                console.log("config", config);
+              }}
+            />
+            <ConfigurationContext.Provider value={configValueForContext}>
+              <div className={"panes"}>
+                <div
+                  id="summary-pane"
+                  className={"pane"}
+                  ref={handleSummaryPanel}
+                >
+                  <Summary node={data} />
                 </div>
-                <div id="full-text-pane"
-                    className={"pane full-txt-pane"}
-                    ref={handleFulltextPanel}
-                    style={{flexBasis: 1}}>
-                <FullText node={data} />
+                <div
+                  id="full-text-pane"
+                  className={"pane full-text-pane"}
+                  ref={handleFulltextPanel}
+                >
+                  <FullText node={data} />
                 </div>
-          </div>
-        </ConfigurationContext.Provider>
-
-          
+              </div>
+            </ConfigurationContext.Provider>
           </>
         );
       };
@@ -273,11 +320,13 @@ export const useConfiguration = () => useContext(ConfigurationContext);
       const isElementInViewport = (el) => {
         const rect = el.getBoundingClientRect();
         return (
-          rect.top >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight)
+          rect.top >= 0 &&
+          rect.bottom <=
+            (window.innerHeight || document.documentElement.clientHeight)
         );
       };
 
-      ReactDOM.render(<App />, document.getElementById('app'));
+      ReactDOM.render(<App />, document.getElementById("app"));
     </script>
   </body>
 </html>
