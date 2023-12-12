@@ -16,6 +16,18 @@ body, html {
     border-right: 1px solid #ddd;
 }
 
-#full-text-pane {
+.full-text-pane {
     border-right: none;
+}
+
+
+.summary {
+    background-color: lightblue;
+}
+
+.changes-from-proposal {
+    background-color: coral;
+}
+.key-points {
+    background-color: yellowgreen;
 }

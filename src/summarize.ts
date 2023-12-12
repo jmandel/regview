@@ -76,10 +76,10 @@ import { CacheManager } from "./CacheManager";
 const summaryCache = new CacheManager("summaryCache.json");
 
 async function summarizeOneSnippet(position, text) {
-    const cachedResult = summaryCache.get(text);
-    if (cachedResult) {
-      return cachedResult;
-    }
+    // const cachedResult = summaryCache.get(text);
+    // if (cachedResult) {
+    //   return cachedResult;
+    // }
 
   const messages = [
     {
