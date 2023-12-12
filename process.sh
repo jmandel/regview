@@ -18,3 +18,6 @@ for FILE in ${cache_dir}/*.txt; do
     cat "$FILE" >> "$OUTPUT_FILE"
     echo -e "\n" >> "$OUTPUT_FILE"
 done
+
+# Manually review and resolve any broken-up header lines
+# In Vim, slash then \v\v^(\w\.).*\n[^A-Z0-9]

@@ -1,7 +1,20 @@
 import fs from "fs";
 import OpenAI from "openai";
+import { program } from 'commander';
 
-const tree = JSON.parse(fs.readFileSync("cures-final.json"));
+program
+  .option('-i, --input <file>', 'input file')
+  .parse(process.argv);
+
+const options = program.opts();
+
+if (!options.input) {
+  console.error('No input file provided!');
+  process.exit(1);
+}
+
+const tree = JSON.parse(fs.readFileSync(options.input));
+
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   organization: process.env.OPENAI_API_ORG,
@@ -61,7 +74,7 @@ function countNodes(node) {
 
 import { CacheManager } from "./CacheManager";
 const summaryCache = new CacheManager("summaryCache.json");
-c
+
 async function summarizeOneSnippet(position, text) {
     const cachedResult = summaryCache.get(text);
     if (cachedResult) {
@@ -72,15 +85,15 @@ async function summarizeOneSnippet(position, text) {
     {
       role: "system",
       content:
-        "You are a Health IT technology and regulatory expert, well versed in ONC",
+        "You are a Health IT technology and regulatory assistant, well versed in ONC language. You are reading regulations published by ONC, and these regulations include review of (and response to) public comments. You are summarizing the regulations for a general audience, including healthcare providers, patients, and other stakeholders.",
     },
 
     {
       role: "user",
       content:
-        `Summarize the following regulatory text, reducing it to plain language without adding any commentary, and using a clear tone similar to Paul Graham. Use active voice, jargon-free, and do not preface comments with contextualization or other preamble. Condense considerably.
+        `Summarize the following regulatory section, reducing it to plain language without adding any commentary, and using a clear tone similar to Paul Graham. Focus on what has been finalized, but you can include some of the rationale and background also, Use active voice, jargon-free, and do not preface comments with contextualization or other preamble. Condense considerably.
 
-Position in Regulation: ${position}
+Breadcrumb: ${position}
 
 \`\`\`
 ${text}
@@ -89,8 +102,8 @@ ${text}
 Your output uses JSON in the following format:
 
 interface Response {
-    summary: string; // Markdown with your overall summary content
-    changesFromProposal?: string; // Markdown with bullet list showing any important categories of changes from the proposal (omit if this does not apply)
+    summary: string; // Markdown with your summary content -- focus on what is being required, then explore any nuances, limitations, or exceptions
+    changesFromProposal?: string; // Markdown with bullet list showing important changes between proposal and final rule (omit if this does not apply)
     keyPointsByAudience?: {
         audience: "ehr-developer" | "regulator" | "healthcare-provider" | "patient"; // The audience for this key point
         point: string // markdown formatted key points, in 2nd person
@@ -138,27 +151,23 @@ function getAllText(node) {
   return text;
 }
 
-function getAllSummaryText(summaries) {
+function getAllSummaryText(children) {
   let text = "";
-  for (const summary of summaries) {
-    if (summary) {
-      if (summary.summary) {
-        text += "\n" + summary.summary;
+  for (const child of children) {
+      text += `Sub-Part: ${child.title} \n\n` + child.summary.summary;
+      if (child.summary.changesFromProposal) {
+        text += "Changes from proposal: \n" + child.summary.changesFromProposal;
       }
-      if (summary.changesFromProposal) {
-        text += "\n" + summary.changesFromProposal;
-      }
-      if (summary.keyPointsByAudience) {
-        summary.keyPointsByAudience.forEach((keyPoint) => {
-          text += "\n" + keyPoint.audience + ": " + keyPoint.point;
+      if (child.summary.keyPointsByAudience) {
+        child.summary.keyPointsByAudience.forEach((keyPoint) => {
+          text += "\nKey Point for " + keyPoint.audience + ": " + keyPoint.point;
         });
       }
-    }
   }
   return text;
 }
 
-onst MAX_TEXT_SIZE = 4 * 2500;
+const MAX_TEXT_SIZE = 4 * 2500;
 async function summarizeTree(node, parents = []) {
   if (!node) return;
   const text = getAllText(node);
@@ -169,7 +178,7 @@ async function summarizeTree(node, parents = []) {
       await Promise.all(node.children.map(async (child) => {
         await summarizeTree(child, [...parents, node]); // Recursive call
         if (child?.summary) {
-          summarized.push(child.summary);
+          summarized.push(child);
         }
       }));
     }
