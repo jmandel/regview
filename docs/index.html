@@ -12,10 +12,9 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script type="text/babel" data-presets="react" data-type="module">
 
-      import React, { useRef, useState, useEffect, useCallback } from "https://cdn.skypack.dev/react";
+      import React, { useRef, useState, useEffect, useCallback, createContext, useContext } from "https://cdn.skypack.dev/react";
       import ReactDOM from "https://cdn.skypack.dev/react-dom";
 
-      // ... [other functions and components]
       const fetchData = async () => {
   const response = await fetch('summary.json');
   return response.json();
@@ -26,20 +25,29 @@ const renderMarkdown = (markdown) => {
 };
 
 const Summary = ({ node, depth = 1 }) => {
+   const {
+    showOverallSummary,
+    setShowOverallSummary,
+    showChangesFromProposed,
+    setShowChangesFromProposed,
+    selectedAudiences,
+    setSelectedAudiences
+  } = useConfiguration();
+
   return (
     <div>
       <h1 id={`summary-${node.path.join(",")}`}>
         {node.title}
         <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
       </h1>
-      {node.summary && (
+      {showOverallSummary && node.summary && (
         <div
           className={"summary"}
           dangerouslySetInnerHTML={renderMarkdown(node.summary.summary)}
         />
       )}
 
-      {node.summary?.changesFromProposal && 
+      {showChangesFromProposed &&  node.summary?.changesFromProposal && 
        <div
           className={"changes-from-proposal"}
           dangerouslySetInnerHTML={renderMarkdown(node.summary.changesFromProposal)}
@@ -47,16 +55,17 @@ const Summary = ({ node, depth = 1 }) => {
       } 
       
 
-      {node.summary?.keyPointsByAudience &&
-        <div 
+      {
+        selectedAudiences?.length && node.summary?.keyPointsByAudience &&
+        (<div 
         className={"key-points"}
         >Key Points:
             <ul>
                 {
-                    node.summary.keyPointsByAudience.map((aud, point) =>
+                    node.summary.keyPointsByAudience.filter(({audience}) => selectedAudiences.includes(audience)).map((aud) =>
                     <li><strong>{aud.audience}</strong> {aud.point}</li>)
                 }
-            </ul></div>
+            </ul></div>)
       } 
 
       {/* Render other parts of the summary as needed */}
@@ -82,8 +91,61 @@ const FullText = ({ node, depth = 1 }) => {
   );
 };
 
+const ConfigurationBar = ({audiences, onChange}) => {
+    const [showOverallSummary, setShowOverallSummary] = useState(true);
+    const [showChangesFromProposed, setShowChangesFromProposed] = useState(true);
+    const [selectedAudiences, setSelectedAudiences] = useState(audiences);
+
+    useEffect(() => {
+        onChange({
+            showOverallSummary,
+            showChangesFromProposed,
+            selectedAudiences
+        })
+    }, [showOverallSummary, showChangesFromProposed, selectedAudiences])
+
+  const handleAudienceChange = (event) => {
+    const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
+    setSelectedAudiences(selectedOptions);
+  };
+
+  return (
+    <div className="config-bar">
+      <label>
+        <input
+          type="checkbox"
+          checked={showOverallSummary}
+          onChange={(e) => setShowOverallSummary(e.target.checked)}
+        />
+        Show Overall Summary
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={showChangesFromProposed}
+          onChange={(e) => setShowChangesFromProposed(e.target.checked)}
+        />
+        Show Changes from Proposed Rule
+      </label>
+      <div className="audience-selector">
+        <label htmlFor="audience-select">Audience(s)</label>
+        <select multiple id="audience-select" value={selectedAudiences} onChange={handleAudienceChange}>
+          {audiences.map(audience => (
+            <option key={audience} value={audience}>{audience}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+};
+
+const ConfigurationContext = createContext();
+export const useConfiguration = () => useContext(ConfigurationContext);
 
       const App = () => {
+
+
+        let [configValueForContext, setConfigValueForContext] = useState({})
         const [data, setData] = useState(null);
         let fullTextPanel = null;
         let summaryPanel = null;
@@ -100,6 +162,7 @@ const FullText = ({ node, depth = 1 }) => {
                 return
             }
             controller = self;
+            if (!self) return;
        
           const headings = Array.from(self.querySelectorAll('h1, h2, h3, h4, h5, h6'));
           const topmostVisibleHeading = headings.find(isElementInViewport);
@@ -147,21 +210,43 @@ const FullText = ({ node, depth = 1 }) => {
           return <div>Loading...</div>;
         }
 
-        return (
-          <div style={{display: 'flex', flexDirection: 'row'}}>
+         let audiences =  new Set()
+         const recurse = (node) => {
+          if (node.summary?.keyPointsByAudience) {
+            node.summary.keyPointsByAudience.map(aud => aud.audience).forEach(aud => audiences.add(aud))
+          }
+          node.children.forEach(child => recurse(child));
+         }
+         recurse(data);
 
-            <div id="summary-pane" 
-                className={"pane"}
-                ref={handleSummaryPanel} style={{flexBasis: 1}}>
-              <Summary node={data} />
-            </div>
-            <div id="full-text-pane"
-                className={"pane full-txt-pane"}
-                ref={handleFulltextPanel}
-                style={{flexBasis: 1}}>
-              <FullText node={data} />
-            </div>
+
+        return (
+          <>
+          <ConfigurationBar
+            audiences={Array.from(audiences)}
+            onChange={(config) => {
+              setConfigValueForContext(config)
+              console.log("config", config)
+            }}
+          />
+        <ConfigurationContext.Provider value={configValueForContext}>
+            <div className={"panes"}>
+                <div id="summary-pane" 
+                    className={"pane"}
+                    ref={handleSummaryPanel} style={{flexBasis: 1}}>
+                <Summary node={data} />
+                </div>
+                <div id="full-text-pane"
+                    className={"pane full-txt-pane"}
+                    ref={handleFulltextPanel}
+                    style={{flexBasis: 1}}>
+                <FullText node={data} />
+                </div>
           </div>
+        </ConfigurationContext.Provider>
+
+          
+          </>
         );
       };
 
