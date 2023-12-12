@@ -19,9 +19,9 @@ function renderMarkdown(markdown) {
 
 // Render the summary content
 function renderSummary(node, depth = 1) {
-    let html = `<h${depth} id="summary-${JSON.stringify(node.path)}">
+    let html = `<h${depth} id="summary-${node.path.join(",")}">
     ${node.title}
-    <a href="#full-text-${JSON.stringify(node.path)}">🔗</a>
+    <a href="#full-text-${node.path.join(",")}">🔗</a>
     </h${depth}>`;
 
     if (node.summary) 
@@ -47,9 +47,9 @@ function renderSummary(node, depth = 1) {
 }
 
 function renderFullText(node, depth = 1) {
-    let html = `<h${depth} id="full-text-${JSON.stringify(node.path)}"
+    let html = `<h${depth} id="full-text-${node.path.join(",")}"
     >
-    <a href="#full-text-${JSON.stringify(node.path)}">🔗</a>
+    <a href="#full-text-${node.path.join(",")}">🔗</a>
     ${node.title}</h${depth}>`;
     html += renderMarkdown(node.text);
 
