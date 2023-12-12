@@ -25,6 +25,7 @@ const renderMarkdown = (markdown) => {
 };
 
 const Summary = ({ node, depth = 1 }) => {
+
    const {
     showOverallSummary,
     setShowOverallSummary,
@@ -34,12 +35,13 @@ const Summary = ({ node, depth = 1 }) => {
     setSelectedAudiences
   } = useConfiguration();
 
+  const Heading  = header(depth)
   return (
     <div>
-      <h1 id={`summary-${node.path.join(",")}`}>
+      <Heading id={`summary-${node.path.join(",")}`}>
         {node.title}
         <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
-      </h1>
+      </Heading>
       {showOverallSummary && node.summary && (
         <div
           className={"summary"}
@@ -75,14 +77,32 @@ const Summary = ({ node, depth = 1 }) => {
     </div>
   );
 };
+const header = (depth) => {
+  switch (depth) {
+    case 1:
+      return 'h1'
+    case 2:
+      return 'h2'
+    case 3:
+      return 'h3'
+    case 4:
+      return 'h4'
+    case 5:
+      return 'h5'
+    default:
+      return 'h6'
+  }
+};
 
 const FullText = ({ node, depth = 1 }) => {
+  const Heading  = header(depth)
+
   return (
     <div>
-      <h1 id={`full-text-${node.path.join(",")}`}>
+      <Heading id={`full-text-${node.path.join(",")}`}>
         <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
         {node.title}
-      </h1>
+      </Heading>
       <div dangerouslySetInnerHTML={renderMarkdown(node.text)} />
       {node.children.map(child => (
         <FullText key={child.path.join(",")} node={child} depth={depth + 1} />
