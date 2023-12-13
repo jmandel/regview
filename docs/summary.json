@@ -2155,10 +2155,7 @@
                       "children": [],
                       "summary": {
                         "summary": "Health IT developers must now provide a summary of their risk management practices for decision support interventions (DSIs) to the ONC-Authorized Certification Bodies (ONC-ACBs). This summary must be accessible via a public hyperlink without any restrictions, allowing anyone to view it directly. The ONC-ACBs will report this information on the Certified Health IT Product List (CHPL). The summary pertains to the entire suite of DSIs that a certified Health IT Module enables or interfaces with, not just individual DSIs. The final rule allows developers to decide the level of detail in their summaries, ensuring they don't have to disclose sensitive intellectual property or proprietary information. The requirement aims to increase transparency and trust in predictive DSIs by making information about their risk management practices available to the public.",
-                        "changesFromProposal": [
-                          "- Developers have flexibility in determining the level of detail for the summary information, addressing concerns about revealing proprietary information.",
-                          "- The requirement for public disclosure of summary information on risk management practices has been finalized, despite concerns about intellectual property and increased administrative burden."
-                        ],
+                        "changesFromProposal": "- Developers have flexibility in determining the level of detail for the summary information, addressing concerns about revealing proprietary information.\n- The requirement for public disclosure of summary information on risk management practices has been finalized, despite concerns about intellectual property and increased administrative burden.",
                         "keyPointsByAudience": [
                           {
                             "audience": "ehr-developer",

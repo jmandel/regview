@@ -18,6 +18,10 @@ body, html {
     position: relative;
 }
 
+span.box-label {
+    font-style: italic;
+}
+
 .panes {
     display: flex;
     flex-direction: row;

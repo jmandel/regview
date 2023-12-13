@@ -30,6 +30,7 @@
         if (!markdown) {
             console.log("NO MARKDOWN", node)
         }
+        console.log(node)
         return { __html: marked.parse(markdown || "") };
       };
 
@@ -50,26 +51,24 @@
               {node.title}
               <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
             </Heading>
-            {showOverallSummary && node.summary && (
+            {showOverallSummary && node?.summary?.summary && (
+
               <div
                 className={"summary"}
-                dangerouslySetInnerHTML={renderMarkdown(node.summary.summary, node)}
+                dangerouslySetInnerHTML={renderMarkdown("*Summary:*\n\n" + node.summary.summary, node)}
               />
             )}
 
             {showChangesFromProposed && node.summary?.changesFromProposal && (
-              <div
-                className={"changes-from-proposal"}
-                dangerouslySetInnerHTML={renderMarkdown(
-                  node.summary.changesFromProposal,
-                  node
-                )}
-              />
+                <div className={"changes-from-proposal"}>
+                    <span className={"box-label"}>Changes from Proposed Rule</span>
+                    <div dangerouslySetInnerHTML={renderMarkdown(node.summary.changesFromProposal, node)} />
+                </div>
             )}
 
             {selectedAudiences?.length && node.summary?.keyPointsByAudience && (
               <div className={"key-points"}>
-                Key Points:
+                <span className={"box-label"}>Key Points:</span>
                 <ul>
                   {node?.summary?.keyPointsByAudience
                     .filter(({ audience }) =>

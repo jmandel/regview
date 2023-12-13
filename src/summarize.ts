@@ -201,6 +201,9 @@ async function summarizeTree(node, parents = []) {
     console.log("recursive summary", getNodePosition(node, parents));
     node.summary = await summarizeOneSnippet(nodePosition, node?.text + "\n\n" + getAllSummaryText(summarized));
   }
+    if (Array.isArray(node.summary?.changesFromProposal)) {
+      node.summary.changesFromProposal = node.summary.changesFromProposal.join("\n");
+    }
     console.log("Completed summary", getNodePosition(node, parents));
 }
 
