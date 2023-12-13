@@ -67,7 +67,7 @@ class RequestPool {
 }
 
 // Usage:
-const pool = new RequestPool(10);
+const pool = new RequestPool(20);
 let n = 0;
 function countNodes(node) {
   let count = 1; // Count the current node
@@ -190,6 +190,7 @@ async function summarizeTree(node, parents = []) {
       }
     }));
   }
+  // summarized = node.children
 
   if (text.length <= MAX_TEXT_SIZE) {
     // Summarize directly if total text size is within the limit
@@ -204,7 +205,7 @@ async function summarizeTree(node, parents = []) {
 }
 
 console.log(countNodes(tree));
-for (const child of tree.children.slice(0, 1)) {
+for (const child of tree.children) {
   await summarizeTree(child);
 }
 fs.writeFileSync(options.output, JSON.stringify(tree, null, 2));
