@@ -60,6 +60,10 @@ span.box-label {
 .section-selector {
     height: 20px;
 }
+ .section-selector select  {
+    border: 2px solid goldenrod;
+ }
+ 
 .section-selector, .section-selector select {
     width: 100%;
 }
