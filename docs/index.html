@@ -16,6 +16,7 @@
         useState,
         useEffect,
         useCallback,
+        useMemo,
         createContext,
         useContext,
       } from "https://cdn.skypack.dev/react";
@@ -30,7 +31,6 @@
         if (!markdown) {
             console.log("NO MARKDOWN", node)
         }
-        console.log(node)
         return { __html: marked.parse(markdown || "") };
       };
 
@@ -133,6 +133,44 @@
           </>
         );
       };
+
+        function extractSections(tree) {
+            const sections = [];
+            const recurse = (node, depth) => {
+                sections.push({title: node.title, depth, path: node.path})
+                node.children.forEach(child => recurse(child, depth + 1))
+            }
+            recurse(tree, 0)
+            return sections.slice(1)
+        }
+      // widget with dropdown list of all sections titles, indented by parent/child relationship
+      const SectionSelector = ({data}) => {
+        const sections =  useMemo(() => extractSections(data), [data])
+        function jumpToSection(event) {
+            const path = event.target.value.split(",").map(x => parseInt(x))
+            document.location.hash = `#full-text-${path.join(",")}`
+            setHash(path)
+            console.log("hash", path)
+        }
+
+        let [hash, setHash] = useState([]);
+        try {
+            hash = document.location.hash.split("-").at(-1).split(",").map(x => parseInt(x))
+            console.log("Def hash", hash)
+        } catch { }
+
+        return (
+            <div className="section-selector">
+                <select defaultValue={hash.join(",")} onChange={jumpToSection}>
+                    {sections.map(section => (
+                        <option value={(section.path || []).join(",")}>{
+                            Array(section.depth).fill("__").join("") +
+                            section.title}</option>
+                    ))}
+                </select>
+            </div>
+        )
+      }
 
       const ConfigurationBar = ({ audiences, onChange }) => {
         const [showOverallSummary, setShowOverallSummary] = useState(true);
@@ -243,7 +281,6 @@
             //   const selfScollPosition = topmostVisibleHeading.getBoundingClientRect().top - self.getBoundingClientRect().top;
             //   other.scrollTop = dependantElt.offsetTop - selfScollPosition+ (e.target === fullTextPanel ? -100 : -100);
                 const selfScrollOnScreen = topmostVisibleHeading.getBoundingClientRect().top - self.getBoundingClientRect().top; 
-                console.log("Self on scree", selfScrollOnScreen)
                 other.scrollTop = dependantElt.offsetTop - selfScrollOnScreen
             }
 
@@ -254,7 +291,6 @@
         };
 
         const handleFulltextPanel = useCallback((pane) => {
-          console.log("right Scroll effect", pane);
           fullTextPanel = pane;
           if (!pane) {
             return;
@@ -266,7 +302,6 @@
         });
 
         const handleSummaryPanel = useCallback((pane) => {
-          console.log("left Scroll effect", pane);
           summaryPanel = pane;
           if (!pane) {
             return;
@@ -294,11 +329,11 @@
 
         return (
           <>
+            <SectionSelector data={data} />
             <ConfigurationBar
               audiences={Array.from(audiences)}
               onChange={(config) => {
                 setConfigValueForContext(config);
-                console.log("config", config);
               }}
             />
             <ConfigurationContext.Provider value={configValueForContext}>

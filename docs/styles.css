@@ -25,7 +25,7 @@ span.box-label {
 .panes {
     display: flex;
     flex-direction: row;
-    height: calc(100% - 100px);
+    height: calc(100% - 120px);
 }
 
 .full-text-pane {
@@ -56,4 +56,10 @@ span.box-label {
 .audience-selector {
     display: flex;
     flex-direction: column;
+}
+.section-selector {
+    height: 20px;
+}
+.section-selector, .section-selector select {
+    width: 100%;
 }
