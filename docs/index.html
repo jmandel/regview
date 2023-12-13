@@ -26,8 +26,11 @@
         return response.json();
       };
 
-      const renderMarkdown = (markdown) => {
-        return { __html: marked.parse(markdown) };
+      const renderMarkdown = (markdown, node) => {
+        if (!markdown) {
+            console.log("NO MARKDOWN", node)
+        }
+        return { __html: marked.parse(markdown || "") };
       };
 
       const Summary = ({ node, depth = 1 }) => {
@@ -50,7 +53,7 @@
             {showOverallSummary && node.summary && (
               <div
                 className={"summary"}
-                dangerouslySetInnerHTML={renderMarkdown(node.summary.summary)}
+                dangerouslySetInnerHTML={renderMarkdown(node.summary.summary, node)}
               />
             )}
 
@@ -58,7 +61,8 @@
               <div
                 className={"changes-from-proposal"}
                 dangerouslySetInnerHTML={renderMarkdown(
-                  node.summary.changesFromProposal
+                  node.summary.changesFromProposal,
+                  node
                 )}
               />
             )}
@@ -67,7 +71,7 @@
               <div className={"key-points"}>
                 Key Points:
                 <ul>
-                  {node.summary.keyPointsByAudience
+                  {node?.summary?.keyPointsByAudience
                     .filter(({ audience }) =>
                       selectedAudiences.includes(audience)
                     )
@@ -95,6 +99,8 @@
         switch (depth) {
           case 1:
             return "h1";
+          case 1:
+            return "h1";
           case 2:
             return "h2";
           case 3:
@@ -117,7 +123,7 @@
               <a href={`#full-text-${node.path.join(",")}`}>🔗</a>
               {node.title}
             </Heading>
-            <div dangerouslySetInnerHTML={renderMarkdown(node.text)} />
+            <div dangerouslySetInnerHTML={renderMarkdown(node.text, node)} />
             {node.children.map((child) => (
               <FullText
                 key={child.path.join(",")}
@@ -199,7 +205,8 @@
 
         useEffect(async () => {
           const data = await fetchData();
-          setData(data.children[3]);
+          console.log(data)
+          setData(data);
           if (window.location.hash) {
             const element = document.getElementById(
               window.location.hash.substr(1)
@@ -302,14 +309,14 @@
                   className={"pane"}
                   ref={handleSummaryPanel}
                 >
-                  <Summary node={data} />
+                {data.children.map(data => (<Summary node={data} />))}
                 </div>
                 <div
                   id="full-text-pane"
                   className={"pane full-text-pane"}
                   ref={handleFulltextPanel}
                 >
-                  <FullText node={data} />
+                {data.children.map(data => (<FullText node={data} />))}
                 </div>
               </div>
             </ConfigurationContext.Provider>

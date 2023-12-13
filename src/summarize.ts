@@ -4,6 +4,7 @@ import { program } from 'commander';
 
 program
   .option('-i, --input <file>', 'input file')
+  .option('-o, --output <file>', 'output file')
   .parse(process.argv);
 
 const options = program.opts();
@@ -12,6 +13,12 @@ if (!options.input) {
   console.error('No input file provided!');
   process.exit(1);
 }
+
+if (!options.output) {
+  console.error('No output file provided!');
+  process.exit(1);
+}
+
 
 const tree = JSON.parse(fs.readFileSync(options.input));
 
@@ -60,7 +67,7 @@ class RequestPool {
 }
 
 // Usage:
-const pool = new RequestPool(5);
+const pool = new RequestPool(10);
 let n = 0;
 function countNodes(node) {
   let count = 1; // Count the current node
@@ -76,10 +83,10 @@ import { CacheManager } from "./CacheManager";
 const summaryCache = new CacheManager("summaryCache.json");
 
 async function summarizeOneSnippet(position, text) {
-    // const cachedResult = summaryCache.get(text);
-    // if (cachedResult) {
-    //   return cachedResult;
-    // }
+    const cachedResult = summaryCache.get(text);
+    if (cachedResult) {
+      return cachedResult;
+    }
 
   const messages = [
     {
@@ -91,7 +98,7 @@ async function summarizeOneSnippet(position, text) {
     {
       role: "user",
       content:
-        `Summarize the following regulatory section, reducing it to plain language without adding any commentary, and using a clear tone similar to Paul Graham. Focus on what has been finalized, but you can include some of the rationale and background also, Use active voice, jargon-free, and do not preface comments with contextualization or other preamble. Condense considerably.
+        `Summarize the following regulatory section, reducing it to plain language without adding any commentary, and using a clear tone similar to Paul Graham. Focus on what has been finalized, but you can include some of the rationale and background also, Use active voice, jargon-free, do not preface comments with contextualization or preamble. Condense considerably.
 
 Breadcrumb: ${position}
 
@@ -105,7 +112,7 @@ interface Response {
     summary: string; // Markdown with your summary content -- focus on what is being required, then explore any nuances, limitations, or exceptions
     changesFromProposal?: string; // Markdown with bullet list showing important changes between proposal and final rule (omit if this does not apply)
     keyPointsByAudience?: {
-        audience: "ehr-developer" | "regulator" | "healthcare-provider" | "patient"; // The audience for this key point
+        audience: "ehr-developer" | "healthcare-provider" | "patient"; // The audience for this key point
         point: string // markdown formatted key points, in 2nd person
     }[] 
 }
@@ -114,7 +121,7 @@ interface Response {
   ];
 
   const response = await  pool.enqueue(async () =>  {
-    console.log("Req", n++, text.slice(0, 1000));
+    console.log("Req", n++, position, text.slice(0, 100), text.length, text);
     return  client.chat.completions.create({
         model: "gpt-4-1106-preview",
         temperature: 0,
@@ -126,7 +133,7 @@ interface Response {
   try {
     const ret = JSON.parse(response.choices[0].message.content!);
     summaryCache.set(text, ret)
-    console.log(ret);
+    console.log(position, ret);
     return ret;
   } catch (e) {
     return { failed: (e as any)?.message };
@@ -154,44 +161,50 @@ function getAllText(node) {
 function getAllSummaryText(children) {
   let text = "";
   for (const child of children) {
-      text += `Sub-Part: ${child.title} \n\n` + child.summary.summary;
-      if (child.summary.changesFromProposal) {
-        text += "Changes from proposal: \n" + child.summary.changesFromProposal;
-      }
-      if (child.summary.keyPointsByAudience) {
-        child.summary.keyPointsByAudience.forEach((keyPoint) => {
-          text += "\nKey Point for " + keyPoint.audience + ": " + keyPoint.point;
-        });
-      }
+      text += `\n\nSub-Part: ${child.title} \n\n` + child.summary.summary;
+      // if (child.summary.changesFromProposal) {
+      //   text += "\nChanges from proposal: \n" + child.summary.changesFromProposal;
+      // }
+      // if (child.summary.keyPointsByAudience) {
+      //   child.summary.keyPointsByAudience.forEach((keyPoint) => {
+      //     text += "\nKey Point for " + keyPoint.audience + ": " + keyPoint.point;
+      //   });
+      // }
   }
   return text;
 }
 
 const MAX_TEXT_SIZE = 4 * 2500;
 async function summarizeTree(node, parents = []) {
+  console.log("Summarizing", getNodePosition(node, parents));
   if (!node) return;
   const text = getAllText(node);
   const nodePosition = getNodePosition(node, parents);
 
   let summarized = [];
-    if (node.children && node.children.length) {
-      await Promise.all(node.children.map(async (child) => {
-        await summarizeTree(child, [...parents, node]); // Recursive call
-        if (child?.summary) {
-          summarized.push(child);
-        }
-      }));
-    }
+  if (node.children && node.children.length) {
+    await Promise.all(node.children.map(async (child) => {
+      await summarizeTree(child, [...parents, node]); // Recursive call
+      if (child?.summary) {
+        summarized.push(child);
+      }
+    }));
+  }
 
   if (text.length <= MAX_TEXT_SIZE) {
     // Summarize directly if total text size is within the limit
+    console.log("Direct summary", getNodePosition(node, parents));
     node.summary = await summarizeOneSnippet(nodePosition, text);
   } else {
     // If text size is too big, summarize each child and then summarize these summaries
+    console.log("recursive summary", getNodePosition(node, parents));
     node.summary = await summarizeOneSnippet(nodePosition, node?.text + "\n\n" + getAllSummaryText(summarized));
   }
+    console.log("Completed summary", getNodePosition(node, parents));
 }
 
-console.log(countNodes(tree.children[3]));
-await summarizeTree(tree.children[3]);
-fs.writeFileSync("cures-final.summary.json", JSON.stringify(tree, null, 2));
+console.log(countNodes(tree));
+for (const child of tree.children.slice(0, 1)) {
+  await summarizeTree(child);
+}
+fs.writeFileSync(options.output, JSON.stringify(tree, null, 2));

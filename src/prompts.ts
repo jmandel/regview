@@ -450,25 +450,41 @@ async function transcribeImage(i: string) {
 const { JSDOM } = require("jsdom");
 
 export function parseText(file: string) {
-  const lines = fsPlain.readFileSync(file, "utf-8").replace(/\f/g, '');
+  let lines = fsPlain.readFileSync(file, "utf-8").replace(/\f/g, '');
+
+  // Constructing the regular expression
+  let regex = new RegExp("RIN 0955-AA03.*?official HHS-approved document\.", "gsm");
+
+  // Example use
+  lines = lines.replace(regex, '');
+  //console.log(lines)
+
 
   const navigationPath = lines.split("\n").reduce(
     (acc, line) => {
+
+      if (!line.includes(".")) {
+        acc.processed.at(-1)[0].text += line  + "\n";
+        return acc;
+      }
+
       const text = line.split(". ")[0] + ".";
 
       // Determine the valid successors to the current path
       const LOOKAHEAD = 3;
       const validSuccessors = [];
-      for (let i = 0; i < acc.path.length; i++) {
+      for (let j = 0; j< LOOKAHEAD;j++) {
+        validSuccessors.push(acc.path.concat([j]));
+      }
+
+      for (let i = acc.path.length-1; i >=0; i--) {
         for (let j = 0; j < LOOKAHEAD;j++) {
           validSuccessors.push(
             acc.path.slice(0, i).concat((acc.path[i] || -1) + j + 1)
           );
         }
       }
-      for (let j = 0; j< LOOKAHEAD;j++) {
-        validSuccessors.push(acc.path.concat([j]));
-      }
+      //console.log("Line", line, text, validSuccessors, "FROM", acc.path)
 
       // Determine the text for the final component of each valid successor
       const successorTexts = validSuccessors.map((successor) => {
@@ -503,6 +519,7 @@ export function parseText(file: string) {
         )
       ) {
         acc.processed.at(-1)[0].text += line  + "\n";
+        //console.log("Accumulate", acc.processed.at(-1)[0])
         return acc;
       }
 
@@ -512,11 +529,10 @@ export function parseText(file: string) {
       );
 
 
-      //console.log("Updating", acc.path,  text + " to level " + level, successorTexts);
       // Update the path
       acc.path = validSuccessors[levelIndex]
       const level = validSuccessors[levelIndex].length-1
-      //console.log(line, acc.path, level)
+      //console.log("new level", line, acc.path, level)
 
       // Add the heading to the processed list
       acc.processed.push([{title: line, text: "", children: []}, [...acc.path]]);
@@ -525,6 +541,7 @@ export function parseText(file: string) {
     { processed: [[{title: "Root", text: "", chidren: []}, []]], path: [] }
   );
 
+  //console.log("REady to stitch", JSON.stringify(navigationPath, null, 2))
   return stitchTree(navigationPath.processed)
 }
 
@@ -538,22 +555,21 @@ function stitchTree(data) {
     function insertNode(node, path) {
         let current = root;
         for (let i = 0; i < path.length-1; i++) {
-            // Navigate to the correct parent node
             if (!(path[i] in current.children))
             {
                 current.children[path[i]] = { path: path.slice(0, i), children: [] };
             }
             current = current.children[path[i]];
         }
-        // Insert the new node
-        //console.log(current, node)
-        current.children.push(node);
+        //console.log("Pushing to", node.title, current.path, node.path)
+        current.children[path.at(-1)] = node
     }
 
     // Iterate over the data to build the tree
     data.slice(1).forEach(item => {
         let itemText;
-        [lastFootnoteNumber, itemText] = preprocessText(item[0].text, lastFootnoteNumber)
+        [itemText, lastFootnoteNumber] =preprocessText(item[0].text, lastFootnoteNumber)
+        //console.log("REaching", JSON.stringify(item), "\n\nITEMRAW:" + item[0].text, "\n\nItemText" + itemText);
         let node = {
             title: item[0].title,
             text: itemText,
@@ -871,6 +887,7 @@ function preprocessText(text, lastFootnoteNumberIn = 0) {
   [processedText, lastFootnoteNumber] = processedText = formatFootnotes(processedText, lastFootnoteNumber);
   processedText = insertParagraphBreaksAndFormatTitles(processedText);
 
+  //console.log("proc", processedText, lastFootnoteNumber)
   const lines = processedText.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i].match(/^Footnote (\d+):/);
@@ -881,6 +898,7 @@ function preprocessText(text, lastFootnoteNumberIn = 0) {
     }
   }
 
+  //console.log("proc done", processedText, lastFootnoteNumber)
   return [processedText, lastFootnoteNumber];
 }
 
